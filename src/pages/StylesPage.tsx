@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import { Plus, Edit2, Trash2, Eye, EyeOff, Upload, X } from 'lucide-react';
-
+import { Plus, Trash2, Eye, EyeOff, Upload, X } from 'lucide-react';
 
 interface Category {
   id: number;
   name: string;
 }
-
 
 interface Style {
   id: number;
@@ -20,7 +18,6 @@ interface Style {
   is_active: boolean;
   category?: Category;
 }
-
 
 export default function StylesPage() {
   const [styles, setStyles] = useState<Style[]>([]);
@@ -36,14 +33,11 @@ export default function StylesPage() {
     is_active: true,
   });
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-
 
   useEffect(() => {
     loadStyles();
     loadCategories();
   }, []);
-
 
   const loadStyles = async () => {
     try {
@@ -55,7 +49,6 @@ export default function StylesPage() {
     }
   };
 
-
   const loadCategories = async () => {
     try {
       const response = await fetch('https://neuro-photo-backend-production.up.railway.app/categories');
@@ -66,25 +59,20 @@ export default function StylesPage() {
     }
   };
 
-
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
 
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       alert('Разрешены только JPG, PNG и WebP');
       return;
     }
 
-
     if (file.size > 10 * 1024 * 1024) {
       alert('Максимальный размер файла: 10 МБ');
       return;
     }
 
-
-    setImageFile(file);
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreviewImage(reader.result as string);
@@ -92,10 +80,8 @@ export default function StylesPage() {
     reader.readAsDataURL(file);
   };
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
 
     try {
       const styleData = {
@@ -107,7 +93,6 @@ export default function StylesPage() {
         preview_image: previewImage,
         is_active: formData.is_active,
       };
-
 
       if (editingStyle) {
         await fetch(`https://neuro-photo-backend-production.up.railway.app/styles/admin/${editingStyle.id}`, {
@@ -123,7 +108,6 @@ export default function StylesPage() {
         });
       }
 
-
       loadStyles();
       closeModal();
     } catch (error) {
@@ -131,10 +115,8 @@ export default function StylesPage() {
     }
   };
 
-
   const handleDelete = async (id: number) => {
     if (!confirm('Удалить стиль?')) return;
-
 
     try {
       await fetch(`https://neuro-photo-backend-production.up.railway.app/styles/admin/${id}`, {
@@ -146,7 +128,6 @@ export default function StylesPage() {
     }
   };
 
-
   const toggleActive = async (style: Style) => {
     try {
       await fetch(`https://neuro-photo-backend-production.up.railway.app/styles/admin/${style.id}/toggle`, {
@@ -157,7 +138,6 @@ export default function StylesPage() {
       console.error('Error toggling style:', error);
     }
   };
-
 
   const openModal = (style?: Style) => {
     if (style) {
@@ -183,10 +163,8 @@ export default function StylesPage() {
       });
       setPreviewImage(null);
     }
-    setImageFile(null);
     setShowModal(true);
   };
-
 
   const closeModal = () => {
     setShowModal(false);
@@ -200,14 +178,11 @@ export default function StylesPage() {
       is_active: true,
     });
     setPreviewImage(null);
-    setImageFile(null);
   };
-
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-
 
       <div className="flex-1 p-8">
         <div className="flex justify-between items-center mb-8">
@@ -223,7 +198,6 @@ export default function StylesPage() {
             Добавить стиль
           </button>
         </div>
-
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {styles.map((style) => (
@@ -250,11 +224,9 @@ export default function StylesPage() {
                 </div>
               </div>
 
-
               <div className="p-4">
                 <h3 className="font-bold text-lg text-gray-800 mb-2 line-clamp-1">{style.name}</h3>
                 <p className="text-gray-600 text-sm mb-3 line-clamp-2">{style.description}</p>
-
 
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-purple-600 font-bold text-xl">{style.price} ₽</span>
@@ -265,7 +237,6 @@ export default function StylesPage() {
                   )}
                 </div>
 
-
                 {Array.isArray(style.tags) && style.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-3">
                     {style.tags.slice(0, 3).map((tag, index) => (
@@ -275,7 +246,6 @@ export default function StylesPage() {
                     ))}
                   </div>
                 )}
-
 
                 <div className="flex gap-2">
                   <button
@@ -302,7 +272,6 @@ export default function StylesPage() {
           ))}
         </div>
 
-
         {styles.length === 0 && (
           <div className="text-center py-12 text-gray-500 bg-white rounded-2xl">
             Нет стилей. Добавьте первый стиль.
@@ -310,15 +279,12 @@ export default function StylesPage() {
         )}
       </div>
 
-
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 my-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">
               {editingStyle ? 'Редактировать стиль' : 'Новый стиль'}
             </h2>
-
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -335,7 +301,6 @@ export default function StylesPage() {
                     required
                   />
                 </div>
-
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -361,7 +326,6 @@ export default function StylesPage() {
                 </div>
               </div>
 
-
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Описание
@@ -375,7 +339,6 @@ export default function StylesPage() {
                   required
                 />
               </div>
-
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -396,7 +359,6 @@ export default function StylesPage() {
                 </select>
               </div>
 
-
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Теги (через запятую)
@@ -409,7 +371,6 @@ export default function StylesPage() {
                   placeholder="ретро, винтаж, фильтр"
                 />
               </div>
-
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -424,10 +385,7 @@ export default function StylesPage() {
                     />
                     <button
                       type="button"
-                      onClick={() => {
-                        setPreviewImage(null);
-                        setImageFile(null);
-                      }}
+                      onClick={() => setPreviewImage(null)}
                       className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
                     >
                       <X className="w-4 h-4" />
@@ -450,7 +408,6 @@ export default function StylesPage() {
                 )}
               </div>
 
-
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
@@ -463,7 +420,6 @@ export default function StylesPage() {
                   Активен (отображается в каталоге)
                 </label>
               </div>
-
 
               <div className="flex gap-3 pt-4">
                 <button
