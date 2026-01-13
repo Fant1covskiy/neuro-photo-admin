@@ -34,6 +34,8 @@ export default function StylesPage() {
   });
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+  const API_URL = 'https://neuro-photo-backend-production.up.railway.app';
+
   useEffect(() => {
     loadStyles();
     loadCategories();
@@ -41,7 +43,7 @@ export default function StylesPage() {
 
   const loadStyles = async () => {
     try {
-      const response = await fetch('https://neuro-photo-backend-production.up.railway.app/styles/admin/all');
+      const response = await fetch(`${API_URL}/styles/admin/all`);
       const data = await response.json();
       setStyles(data);
     } catch (error) {
@@ -51,8 +53,8 @@ export default function StylesPage() {
 
   const loadCategories = async () => {
     try {
-      const response = await fetch('https://neuro-photo-backend-production.up.railway.app/categories');
-      const data = await response.json();
+      const response = await fetch(`${API_URL}/categories`);
+    const data = await response.json();
       setCategories(data);
     } catch (error) {
       console.error('Error loading categories:', error);
@@ -89,26 +91,31 @@ export default function StylesPage() {
         description: formData.description,
         category_id: formData.category_id,
         price: Number(formData.price) || 0,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-        preview_image: previewImage,
+        tags: formData.tags
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter((tag) => tag),
+        // если редактируем и новое изображение не выбрано —
+        // отправляем старое, чтобы не затирать его на NULL
+        preview_image: previewImage ?? editingStyle?.preview_image ?? null,
         is_active: formData.is_active,
       };
 
       if (editingStyle) {
-        await fetch(`https://neuro-photo-backend-production.up.railway.app/styles/admin/${editingStyle.id}`, {
+        await fetch(`${API_URL}/styles/admin/${editingStyle.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(styleData),
         });
       } else {
-        await fetch('https://neuro-photo-backend-production.up.railway.app/styles/admin', {
+        await fetch(`${API_URL}/styles/admin`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(styleData),
         });
       }
 
-      loadStyles();
+      await loadStyles();
       closeModal();
     } catch (error) {
       console.error('Error saving style:', error);
@@ -119,10 +126,10 @@ export default function StylesPage() {
     if (!confirm('Удалить стиль?')) return;
 
     try {
-      await fetch(`https://neuro-photo-backend-production.up.railway.app/styles/admin/${id}`, {
+      await fetch(`${API_URL}/styles/admin/${id}`, {
         method: 'DELETE',
       });
-      loadStyles();
+      await loadStyles();
     } catch (error) {
       console.error('Error deleting style:', error);
     }
@@ -130,10 +137,10 @@ export default function StylesPage() {
 
   const toggleActive = async (style: Style) => {
     try {
-      await fetch(`https://neuro-photo-backend-production.up.railway.app/styles/admin/${style.id}/toggle`, {
+      await fetch(`${API_URL}/styles/admin/${style.id}/toggle`, {
         method: 'PATCH',
       });
-      loadStyles();
+      await loadStyles();
     } catch (error) {
       console.error('Error toggling style:', error);
     }
@@ -201,7 +208,10 @@ export default function StylesPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {styles.map((style) => (
-            <div key={style.id} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+            <div
+              key={style.id}
+              className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+            >
               <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200">
                 {style.preview_image ? (
                   <img
@@ -215,21 +225,35 @@ export default function StylesPage() {
                   </div>
                 )}
                 <div className="absolute top-3 right-3">
-                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
-                    style.is_active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
-                  }`}>
-                    {style.is_active ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                  <span
+                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
+                      style.is_active
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-500 text-white'
+                    }`}
+                  >
+                    {style.is_active ? (
+                      <Eye className="w-3 h-3" />
+                    ) : (
+                      <EyeOff className="w-3 h-3" />
+                    )}
                     {style.is_active ? 'Активен' : 'Скрыт'}
                   </span>
                 </div>
               </div>
 
               <div className="p-4">
-                <h3 className="font-bold text-lg text-gray-800 mb-2 line-clamp-1">{style.name}</h3>
-                <p className="text-gray-600 text-sm mb-3 line-clamp-2">{style.description}</p>
+                <h3 className="font-bold text-lg text-gray-800 mb-2 line-clamp-1">
+                  {style.name}
+                </h3>
+                <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                  {style.description}
+                </p>
 
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-purple-600 font-bold text-xl">{style.price} ₽</span>
+                  <span className="text-purple-600 font-bold text-xl">
+                    {style.price} ₽
+                  </span>
                   {style.category && (
                     <span className="px-2 py-1 bg-purple-100 text-purple-600 rounded-lg text-xs font-semibold">
                       {style.category.name}
@@ -240,7 +264,10 @@ export default function StylesPage() {
                 {Array.isArray(style.tags) && style.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-3">
                     {style.tags.slice(0, 3).map((tag, index) => (
-                      <span key={index} className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"
+                      >
                         {`#${tag}`}
                       </span>
                     ))}
@@ -295,7 +322,9 @@ export default function StylesPage() {
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none"
                     placeholder="Например: Vintage"
                     required
@@ -313,10 +342,10 @@ export default function StylesPage() {
                       const value = e.target.value.replace(/[^\d.,]/g, '');
                       const normalizedValue = value.replace(',', '.');
                       const numValue = parseFloat(normalizedValue);
-                      
-                      setFormData({ 
-                        ...formData, 
-                        price: isNaN(numValue) ? 0 : numValue 
+
+                      setFormData({
+                        ...formData,
+                        price: isNaN(numValue) ? 0 : numValue,
                       });
                     }}
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none"
@@ -332,7 +361,9 @@ export default function StylesPage() {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none"
                   rows={3}
                   placeholder="Описание стиля..."
@@ -346,7 +377,12 @@ export default function StylesPage() {
                 </label>
                 <select
                   value={formData.category_id}
-                  onChange={(e) => setFormData({ ...formData, category_id: parseInt(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      category_id: parseInt(e.target.value),
+                    })
+                  }
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none"
                   required
                 >
@@ -366,7 +402,9 @@ export default function StylesPage() {
                 <input
                   type="text"
                   value={formData.tags}
-                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tags: e.target.value })
+                  }
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none"
                   placeholder="ретро, винтаж, фильтр"
                 />
@@ -401,8 +439,12 @@ export default function StylesPage() {
                     />
                     <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-500 transition-colors">
                       <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-600 font-semibold">Нажмите для загрузки</p>
-                      <p className="text-gray-500 text-sm">JPG, PNG, WebP (макс. 10 МБ)</p>
+                      <p className="text-gray-600 font-semibold">
+                        Нажмите для загрузки
+                      </p>
+                      <p className="text-gray-500 text-sm">
+                        JPG, PNG, WebP (макс. 10 МБ)
+                      </p>
                     </div>
                   </label>
                 )}
@@ -413,10 +455,18 @@ export default function StylesPage() {
                   type="checkbox"
                   id="is_active"
                   checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      is_active: e.target.checked,
+                    })
+                  }
                   className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
                 />
-                <label htmlFor="is_active" className="text-sm font-semibold text-gray-700">
+                <label
+                  htmlFor="is_active"
+                  className="text-sm font-semibold text-gray-700"
+                >
                   Активен (отображается в каталоге)
                 </label>
               </div>
