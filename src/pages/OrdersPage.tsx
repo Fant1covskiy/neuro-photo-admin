@@ -342,14 +342,18 @@ export default function OrdersPage() {
                     Исходные фото ({selectedOrder.photos.length}):
                   </h3>
                   <div className="grid grid-cols-4 gap-4 mb-8">
-                    {selectedOrder.photos.map((photo, idx) => (
-                      <img
-                        key={idx}
-                        src={photo}
-                        alt={`Photo ${idx + 1}`}
-                        className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
-                      />
-                    ))}
+                    {selectedOrder.photos.map((photo, idx) => {
+                      const photoUrl = photo.startsWith('http') ? photo : `${API_URL}/uploads/orders/${photo}`;
+                      
+                      return (
+                        <img
+                          key={idx}
+                          src={photoUrl}
+                          alt={`Photo ${idx + 1}`}
+                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
+                        />
+                      );
+                    })}
                   </div>
 
                   <h3 className="text-lg font-semibold mb-3">
@@ -357,24 +361,28 @@ export default function OrdersPage() {
                   </h3>
                   {selectedOrder.result_photos && selectedOrder.result_photos.length > 0 ? (
                     <div className="grid grid-cols-4 gap-4 mb-6">
-                      {selectedOrder.result_photos.map((photo, idx) => (
-                        <div key={idx} className="relative group">
-                          <img
-                            src={photo}
-                            alt={`Result ${idx + 1}`}
-                            className="w-full h-32 object-cover rounded-lg border-2 border-green-500"
-                          />
-                          <button
-                            onClick={() => deleteResultPhoto(photo)}
-                            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                            title="Удалить"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
+                      {selectedOrder.result_photos.map((photo, idx) => {
+                        const photoUrl = photo.startsWith('http') ? photo : `${API_URL}/uploads/results/${photo}`;
+                        
+                        return (
+                          <div key={idx} className="relative group">
+                            <img
+                              src={photoUrl}
+                              alt={`Result ${idx + 1}`}
+                              className="w-full h-32 object-cover rounded-lg border-2 border-green-500"
+                            />
+                            <button
+                              onClick={() => deleteResultPhoto(photo)}
+                              className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                              title="Удалить"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-gray-500 mb-6">Готовых фото пока нет</p>
