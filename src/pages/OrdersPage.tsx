@@ -9,7 +9,7 @@ interface Order {
   telegram_user_id: number;
   username: string;
   first_name: string;
-  styles: string | any[]; // 🔥 МОЖЕТ БЫТЬ СТРОКОЙ!
+  styles: string | any[];
   photos: string[];
   total_price: string;
   status: 'pending' | 'processing' | 'completed' | 'cancelled';
@@ -35,13 +35,11 @@ export default function OrdersPage() {
       setOrders(response.data);
     } catch (error) {
       console.error('Ошибка загрузки заказов:', error);
-      alert('Не удалось загрузить заказы');
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔥 НОВАЯ ФУНКЦИЯ: парсинг styles
   const parseStyles = (styles: string | any[]) => {
     if (typeof styles === 'string') {
       try {
@@ -57,11 +55,9 @@ export default function OrdersPage() {
   const updateOrderStatus = async (orderId: number, newStatus: string) => {
     try {
       await axios.put(`${API_URL}/admin/orders/${orderId}`, { status: newStatus });
-      alert('Статус обновлен!');
       loadOrders();
     } catch (error) {
       console.error('Ошибка обновления:', error);
-      alert('Ошибка обновления статуса');
     }
   };
 
@@ -70,12 +66,10 @@ export default function OrdersPage() {
     
     try {
       await axios.delete(`${API_URL}/admin/orders/${orderId}`);
-      alert('Заказ удален!');
       loadOrders();
       setSelectedOrder(null);
     } catch (error) {
       console.error('Ошибка удаления:', error);
-      alert('Ошибка удаления заказа');
     }
   };
 
@@ -85,7 +79,6 @@ export default function OrdersPage() {
 
   const uploadResultPhotos = async () => {
     if (!selectedOrder || !selectedFiles || selectedFiles.length === 0) {
-      alert('Выберите фотографии для загрузки');
       return;
     }
 
@@ -105,16 +98,13 @@ export default function OrdersPage() {
         }
       );
       
-      alert('Фотографии успешно загружены!');
       setSelectedFiles(null);
       loadOrders();
       
-      // Обновляем выбранный заказ
       const updatedOrder = await axios.get(`${API_URL}/admin/orders/${selectedOrder.id}`);
       setSelectedOrder(updatedOrder.data);
     } catch (error) {
       console.error('Ошибка загрузки фото:', error);
-      alert('Ошибка загрузки фотографий');
     } finally {
       setUploadingPhotos(false);
     }
@@ -129,13 +119,11 @@ export default function OrdersPage() {
         { data: { photo_url: photoUrl } }
       );
       
-      alert('Фото удалено!');
       const updatedOrder = await axios.get(`${API_URL}/admin/orders/${selectedOrder.id}`);
       setSelectedOrder(updatedOrder.data);
       loadOrders();
     } catch (error) {
       console.error('Ошибка удаления фото:', error);
-      alert('Ошибка удаления фотографии');
     }
   };
 
@@ -178,7 +166,6 @@ export default function OrdersPage() {
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Заказы</h1>
         <p className="text-gray-600 mb-8">Управление заказами пользователей</p>
 
-        {/* Статистика */}
         <div className="grid grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-sm text-gray-600 mb-2">Всего заказов</h3>
@@ -204,7 +191,6 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {/* Таблица заказов */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -221,7 +207,7 @@ export default function OrdersPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {orders.map((order) => {
-                const styles = parseStyles(order.styles); // 🔥 ПАРСИМ
+                const styles = parseStyles(order.styles);
                 
                 return (
                   <tr key={order.id} className="hover:bg-gray-50">
@@ -282,9 +268,8 @@ export default function OrdersPage() {
           )}
         </div>
 
-        {/* Модальное окно просмотра заказа */}
         {selectedOrder && (() => {
-          const styles = parseStyles(selectedOrder.styles); // 🔥 ПАРСИМ
+          const styles = parseStyles(selectedOrder.styles);
           
           return (
             <div 
@@ -360,7 +345,7 @@ export default function OrdersPage() {
                     {selectedOrder.photos.map((photo, idx) => (
                       <img
                         key={idx}
-                        src={`${API_URL}/uploads/orders/${photo}`}
+                        src={photo}
                         alt={`Photo ${idx + 1}`}
                         className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
                       />
@@ -375,7 +360,7 @@ export default function OrdersPage() {
                       {selectedOrder.result_photos.map((photo, idx) => (
                         <div key={idx} className="relative group">
                           <img
-                            src={`${API_URL}/uploads/results/${photo}`}
+                            src={photo}
                             alt={`Result ${idx + 1}`}
                             className="w-full h-32 object-cover rounded-lg border-2 border-green-500"
                           />
