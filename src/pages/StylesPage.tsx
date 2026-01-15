@@ -14,7 +14,7 @@ interface Style {
   category_id: number;
   price: number;
   tags: string[];
-  preview_images: string[] | null;
+  preview_image: string[] | null;
   is_active: boolean;
   category?: Category;
 }
@@ -108,7 +108,7 @@ export default function StylesPage() {
       }
 
       const updatedStyle = await response.json();
-      setPreviewImages(updatedStyle.preview_images || []);
+      setPreviewImages(updatedStyle.preview_image || []);
     } catch (err) {
       console.error(err);
       alert('Не удалось загрузить изображение. Попробуйте ещё раз.');
@@ -132,7 +132,7 @@ export default function StylesPage() {
         category_id: formData.category_id,
         price: Number(formData.price) || 0,
         tags,
-        preview_images: previewImages.slice(0, 5),
+        preview_image: previewImages.slice(0, 5),
         is_active: formData.is_active,
       };
 
@@ -192,7 +192,7 @@ export default function StylesPage() {
         tags: Array.isArray(style.tags) ? style.tags.join(', ') : '',
         is_active: style.is_active,
       });
-      setPreviewImages(style.preview_images || []);
+      setPreviewImages(style.preview_image || []);
     } else {
       setEditingStyle(null);
       setFormData({
@@ -248,9 +248,9 @@ export default function StylesPage() {
               className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
             >
               <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200">
-                {style.preview_images && style.preview_images.length > 0 ? (
+                {style.preview_image && style.preview_image.length > 0 ? (
                   <img
-                    src={style.preview_images[0]}
+                    src={style.preview_image[0]}
                     alt={style.name}
                     className="w-full h-full object-cover"
                   />
