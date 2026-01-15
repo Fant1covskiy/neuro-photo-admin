@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { Plus, Trash2, Eye, EyeOff, Upload, X } from 'lucide-react';
+import { API_URL } from '../config/api';
 
 interface Category {
   id: number;
@@ -14,7 +15,7 @@ interface Style {
   category_id: number;
   price: number;
   tags: string[];
-  preview_image: string | null; // строка, не массив
+  preview_image: string[] | null;
   is_active: boolean;
   category?: Category;
 }
@@ -32,12 +33,8 @@ export default function StylesPage() {
     tags: '',
     is_active: true,
   });
-
-  // внутри страницы всегда работаем с ОДНИМ изображением
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [uploadingPreview, setUploadingPreview] = useState(false);
-
-  const API_URL = 'https://neuro-photo-backend-production.up.railway.app';
 
   useEffect(() => {
     loadStyles();
@@ -78,11 +75,15 @@ export default function StylesPage() {
       return;
     }
 
+    if (previewImages.length >= 5) {
+      alert('Максимум 5 изображений для одного стиля');
+      return;
+    }
+
     if (!editingStyle) {
-      // для нового стиля просто показываем превью локально
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
+        setPreviewImages((prev) => [...prev, reader.result as string].slice(0, 5));
       };
       reader.readAsDataURL(file);
       return;
@@ -105,9 +106,8 @@ export default function StylesPage() {
         throw new Error('Ошибка загрузки превью');
       }
 
-      const updatedStyle = await response.json();
-      // бэкенд отдаёт preview_image как строку
-      setPreviewImage(updatedStyle.preview_image || null);
+      const updatedStyle: Style = await response.json();
+      setPreviewImages(updatedStyle.preview_image || []);
     } catch (err) {
       console.error(err);
       alert('Не удалось загрузить изображение. Попробуйте ещё раз.');
@@ -131,7 +131,7 @@ export default function StylesPage() {
         category_id: formData.category_id,
         price: Number(formData.price) || 0,
         tags,
-        preview_image: previewImage, // одна строка
+        preview_image: previewImages.slice(0, 5),
         is_active: formData.is_active,
       };
 
@@ -142,11 +142,23 @@ export default function StylesPage() {
           body: JSON.stringify(styleData),
         });
       } else {
-        await fetch(`${API_URL}/styles/admin`, {
+        const response = await fetch(`${API_URL}/styles/admin`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(styleData),
         });
+        const created: Style = await response.json();
+        if (previewImages.length > 0) {
+          for (const img of previewImages) {
+            if (img.startsWith('data:')) continue;
+            const fd = new FormData();
+            fd.append('preview', img as any);
+            await fetch(`${API_URL}/styles/admin/${created.id}/preview`, {
+              method: 'POST',
+              body: fd,
+            });
+          }
+        }
       }
 
       await loadStyles();
@@ -191,8 +203,7 @@ export default function StylesPage() {
         tags: Array.isArray(style.tags) ? style.tags.join(', ') : '',
         is_active: style.is_active,
       });
-      // приводим к строке
-      setPreviewImage(style.preview_image || null);
+      setPreviewImages(style.preview_image || []);
     } else {
       setEditingStyle(null);
       setFormData({
@@ -203,7 +214,7 @@ export default function StylesPage() {
         tags: '',
         is_active: true,
       });
-      setPreviewImage(null);
+      setPreviewImages([]);
     }
     setShowModal(true);
   };
@@ -219,7 +230,7 @@ export default function StylesPage() {
       tags: '',
       is_active: true,
     });
-    setPreviewImage(null);
+    setPreviewImages([]);
   };
 
   return (
@@ -248,9 +259,9 @@ export default function StylesPage() {
               className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
             >
               <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200">
-                {style.preview_image ? (
+                {style.preview_image && style.preview_image.length > 0 ? (
                   <img
-                    src={style.preview_image}
+                    src={style.preview_image[0]}
                     alt={style.name}
                     className="w-full h-full object-cover"
                   />
@@ -349,33 +360,133 @@ export default function StylesPage() {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* остальная форма без изменений */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Название
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none"
+                    placeholder="Например: Vintage"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Цена (₽)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.price}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^\d.,]/g, '');
+                      const normalizedValue = value.replace(',', '.');
+                      const numValue = parseFloat(normalizedValue);
+
+                      setFormData({
+                        ...formData,
+                        price: isNaN(numValue) ? 0 : numValue,
+                      });
+                    }}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none"
+                    placeholder="50.00"
+                    required
+                  />
+                </div>
+              </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Изображение превью
+                  Описание
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none"
+                  rows={3}
+                  placeholder="Описание стиля..."
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Категория
+                </label>
+                <select
+                  value={formData.category_id}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      category_id: parseInt(e.target.value),
+                    })
+                  }
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none"
+                  required
+                >
+                  <option value="">Выберите категорию</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Теги (через запятую)
+                </label>
+                <input
+                  type="text"
+                  value={formData.tags}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tags: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-600 focus:outline-none"
+                  placeholder="ретро, винтаж, фильтр"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Изображения (до 5)
                 </label>
 
-                {previewImage && (
+                {previewImages.length > 0 && (
                   <div className="grid grid-cols-3 gap-3 mb-3">
-                    <div className="relative">
-                      <img
-                        src={previewImage}
-                        alt="Preview"
-                        className="w-full h-24 object-cover rounded-xl"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setPreviewImage(null)}
-                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
+                    {previewImages.map((img, idx) => (
+                      <div key={idx} className="relative">
+                        <img
+                          src={img}
+                          alt={`Preview ${idx + 1}`}
+                          className="w-full h-24 object-cover rounded-xl"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewImages((prev) =>
+                              prev.filter((_, i) => i !== idx),
+                            )
+                          }
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {!previewImage && (
+                {previewImages.length < 5 && (
                   <label className="block cursor-pointer">
                     <input
                       type="file"
@@ -396,7 +507,42 @@ export default function StylesPage() {
                 )}
               </div>
 
-              {/* чекбокс и кнопки такие же, как у тебя */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="is_active"
+                  checked={formData.is_active}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      is_active: e.target.checked,
+                    })
+                  }
+                  className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                />
+                <label
+                  htmlFor="is_active"
+                  className="text-sm font-semibold text-gray-700"
+                >
+                  Активен (отображается в каталоге)
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  {editingStyle ? 'Сохранить' : 'Создать'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
