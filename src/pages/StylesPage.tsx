@@ -33,6 +33,7 @@ export default function StylesPage() {
     is_active: true,
   });
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [uploadingPreview, setUploadingPreview] = useState(false);
 
   const API_URL = 'https://neuro-photo-backend-production.up.railway.app';
 
@@ -61,7 +62,7 @@ export default function StylesPage() {
     }
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -75,11 +76,40 @@ export default function StylesPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreviewImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    if (!editingStyle) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    try {
+      setUploadingPreview(true);
+      const formDataUpload = new FormData();
+      formDataUpload.append('preview', file);
+
+      const response = await fetch(
+        `${API_URL}/styles/admin/${editingStyle.id}/preview`,
+        {
+          method: 'POST',
+          body: formDataUpload,
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error('Ошибка загрузки превью');
+      }
+
+      const updatedStyle = await response.json();
+      setPreviewImage(updatedStyle.preview_image || null);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось загрузить изображение. Попробуйте ещё раз.');
+    } finally {
+      setUploadingPreview(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,27 +121,13 @@ export default function StylesPage() {
         .map((tag) => tag.trim())
         .filter((tag) => tag);
 
-      let preview_image: string | null = null;
-
-      if (editingStyle) {
-        if (previewImage === null) {
-          preview_image = null;
-        } else if (previewImage === editingStyle.preview_image) {
-          preview_image = editingStyle.preview_image;
-        } else {
-          preview_image = editingStyle.preview_image;
-        }
-      } else {
-        preview_image = previewImage ?? null;
-      }
-
       const styleData = {
         name: formData.name,
         description: formData.description,
         category_id: formData.category_id,
         price: Number(formData.price) || 0,
         tags,
-        preview_image,
+        preview_image: previewImage,
         is_active: formData.is_active,
       };
 
@@ -454,7 +470,7 @@ export default function StylesPage() {
                     <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-500 transition-colors">
                       <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                       <p className="text-gray-600 font-semibold">
-                        Нажмите для загрузки
+                        {uploadingPreview ? 'Загрузка...' : 'Нажмите для загрузки'}
                       </p>
                       <p className="text-gray-500 text-sm">
                         JPG, PNG, WebP (макс. 10 МБ)
