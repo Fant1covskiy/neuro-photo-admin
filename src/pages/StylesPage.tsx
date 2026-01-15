@@ -54,7 +54,7 @@ export default function StylesPage() {
   const loadCategories = async () => {
     try {
       const response = await fetch(`${API_URL}/categories`);
-    const data = await response.json();
+      const data = await response.json();
       setCategories(data);
     } catch (error) {
       console.error('Error loading categories:', error);
@@ -86,18 +86,32 @@ export default function StylesPage() {
     e.preventDefault();
 
     try {
+      const tags = formData.tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter((tag) => tag);
+
+      let preview_image: string | null = null;
+
+      if (editingStyle) {
+        if (previewImage === null) {
+          preview_image = null;
+        } else if (previewImage === editingStyle.preview_image) {
+          preview_image = editingStyle.preview_image;
+        } else {
+          preview_image = editingStyle.preview_image;
+        }
+      } else {
+        preview_image = previewImage ?? null;
+      }
+
       const styleData = {
         name: formData.name,
         description: formData.description,
         category_id: formData.category_id,
         price: Number(formData.price) || 0,
-        tags: formData.tags
-          .split(',')
-          .map((tag) => tag.trim())
-          .filter((tag) => tag),
-        // если редактируем и новое изображение не выбрано —
-        // отправляем старое, чтобы не затирать его на NULL
-        preview_image: previewImage ?? editingStyle?.preview_image ?? null,
+        tags,
+        preview_image,
         is_active: formData.is_active,
       };
 
