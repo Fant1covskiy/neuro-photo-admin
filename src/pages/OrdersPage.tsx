@@ -6,7 +6,7 @@ const API_URL = 'https://neuro-photo-backend-production.up.railway.app';
 
 interface Order {
   id: number;
-  telegram_user_id: number;
+  telegram_user_id: number | string;
   username: string;
   first_name: string;
   styles: string | any[];
@@ -31,7 +31,7 @@ export default function OrdersPage() {
 
   const loadOrders = async () => {
     try {
-      const response = await axios.get(`${API_URL}/admin/orders`);
+      const response = await axios.get(`${API_URL}/api/admin/orders`);
       setOrders(response.data);
     } catch (error) {
       console.error('Ошибка загрузки заказов:', error);
@@ -43,7 +43,8 @@ export default function OrdersPage() {
   const parseStyles = (styles: string | any[]) => {
     if (typeof styles === 'string') {
       try {
-        return JSON.parse(styles);
+        const parsed = JSON.parse(styles);
+        return Array.isArray(parsed) ? parsed : [];
       } catch (e) {
         console.error('Error parsing styles:', e);
         return [];
@@ -54,7 +55,7 @@ export default function OrdersPage() {
 
   const updateOrderStatus = async (orderId: number, newStatus: string) => {
     try {
-      await axios.put(`${API_URL}/admin/orders/${orderId}`, { status: newStatus });
+      await axios.put(`${API_URL}/api/admin/orders/${orderId}`, { status: newStatus });
       loadOrders();
     } catch (error) {
       console.error('Ошибка обновления:', error);
@@ -63,9 +64,9 @@ export default function OrdersPage() {
 
   const deleteOrder = async (orderId: number) => {
     if (!window.confirm('Удалить этот заказ?')) return;
-    
+
     try {
-      await axios.delete(`${API_URL}/admin/orders/${orderId}`);
+      await axios.delete(`${API_URL}/api/admin/orders/${orderId}`);
       loadOrders();
       setSelectedOrder(null);
     } catch (error) {
@@ -78,30 +79,22 @@ export default function OrdersPage() {
   };
 
   const uploadResultPhotos = async () => {
-    if (!selectedOrder || !selectedFiles || selectedFiles.length === 0) {
-      return;
-    }
+    if (!selectedOrder || !selectedFiles || selectedFiles.length === 0) return;
 
     setUploadingPhotos(true);
     const formData = new FormData();
-    
-    Array.from(selectedFiles).forEach(file => {
+
+    Array.from(selectedFiles).forEach((file) => {
       formData.append('photos', file);
     });
 
     try {
-      await axios.post(
-        `${API_URL}/admin/orders/${selectedOrder.id}/result-photos`,
-        formData,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        }
-      );
-      
+      await axios.post(`${API_URL}/api/admin/orders/${selectedOrder.id}/result-photos`, formData);
+
       setSelectedFiles(null);
-      loadOrders();
-      
-      const updatedOrder = await axios.get(`${API_URL}/admin/orders/${selectedOrder.id}`);
+      await loadOrders();
+
+      const updatedOrder = await axios.get(`${API_URL}/api/admin/orders/${selectedOrder.id}`);
       setSelectedOrder(updatedOrder.data);
     } catch (error) {
       console.error('Ошибка загрузки фото:', error);
@@ -114,12 +107,11 @@ export default function OrdersPage() {
     if (!selectedOrder || !window.confirm('Удалить это фото?')) return;
 
     try {
-      await axios.delete(
-        `${API_URL}/admin/orders/${selectedOrder.id}/result-photos`,
-        { data: { photo_url: photoUrl } }
-      );
-      
-      const updatedOrder = await axios.get(`${API_URL}/admin/orders/${selectedOrder.id}`);
+      await axios.delete(`${API_URL}/api/admin/orders/${selectedOrder.id}/result-photos`, {
+        data: { photo_url: photoUrl },
+      });
+
+      const updatedOrder = await axios.get(`${API_URL}/api/admin/orders/${selectedOrder.id}`);
       setSelectedOrder(updatedOrder.data);
       loadOrders();
     } catch (error) {
@@ -161,7 +153,7 @@ export default function OrdersPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      
+
       <div className="flex-1 p-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Заказы</h1>
         <p className="text-gray-600 mb-8">Управление заказами пользователей</p>
@@ -173,21 +165,15 @@ export default function OrdersPage() {
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-sm text-gray-600 mb-2">В ожидании</h3>
-            <p className="text-3xl font-bold text-yellow-600">
-              {orders.filter(o => o.status === 'pending').length}
-            </p>
+            <p className="text-3xl font-bold text-yellow-600">{orders.filter((o) => o.status === 'pending').length}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-sm text-gray-600 mb-2">В обработке</h3>
-            <p className="text-3xl font-bold text-blue-600">
-              {orders.filter(o => o.status === 'processing').length}
-            </p>
+            <p className="text-3xl font-bold text-blue-600">{orders.filter((o) => o.status === 'processing').length}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-sm text-gray-600 mb-2">Завершено</h3>
-            <p className="text-3xl font-bold text-green-600">
-              {orders.filter(o => o.status === 'completed').length}
-            </p>
+            <p className="text-3xl font-bold text-green-600">{orders.filter((o) => o.status === 'completed').length}</p>
           </div>
         </div>
 
@@ -208,24 +194,16 @@ export default function OrdersPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {orders.map((order) => {
                 const styles = parseStyles(order.styles);
-                
+
                 return (
                   <tr key={order.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      #{order.id}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{order.id}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {order.first_name || order.username || 'Неизвестно'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {order.telegram_user_id}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {styles.length} шт.
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
-                      ₽{order.total_price}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.telegram_user_id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{styles.length} шт.</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">₽{order.total_price}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <select
                         value={order.status}
@@ -242,16 +220,10 @@ export default function OrdersPage() {
                       {new Date(order.created_at).toLocaleDateString('ru-RU')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="text-blue-600 hover:text-blue-900 font-semibold"
-                      >
+                      <button onClick={() => setSelectedOrder(order)} className="text-blue-600 hover:text-blue-900 font-semibold">
                         Просмотр
                       </button>
-                      <button
-                        onClick={() => deleteOrder(order.id)}
-                        className="text-red-600 hover:text-red-900 font-semibold"
-                      >
+                      <button onClick={() => deleteOrder(order.id)} className="text-red-600 hover:text-red-900 font-semibold">
                         Удалить
                       </button>
                     </td>
@@ -261,147 +233,124 @@ export default function OrdersPage() {
             </tbody>
           </table>
 
-          {orders.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              Заказов пока нет
-            </div>
-          )}
+          {orders.length === 0 && <div className="text-center py-12 text-gray-500">Заказов пока нет</div>}
         </div>
 
-        {selectedOrder && (() => {
-          const styles = parseStyles(selectedOrder.styles);
-          
-          return (
-            <div 
-              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-              onClick={() => setSelectedOrder(null)}
-            >
-              <div 
-                className="bg-white rounded-lg p-8 max-w-6xl w-full max-h-[90vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
+        {selectedOrder &&
+          (() => {
+            const styles = parseStyles(selectedOrder.styles);
+
+            return (
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                onClick={() => setSelectedOrder(null)}
               >
-                <div className="flex justify-between items-start mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">Заказ #{selectedOrder.id}</h2>
-                  <button
-                    onClick={() => setSelectedOrder(null)}
-                    className="text-gray-400 hover:text-gray-600 text-3xl leading-none"
-                  >
-                    &times;
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-8 mb-8">
-                  <div className="space-y-4">
-                    <div>
-                      <span className="font-semibold">Пользователь:</span>{' '}
-                      {selectedOrder.first_name} (@{selectedOrder.username})
-                    </div>
-                    <div>
-                      <span className="font-semibold">Telegram ID:</span>{' '}
-                      {selectedOrder.telegram_user_id}
-                    </div>
-                    <div>
-                      <span className="font-semibold">Цена:</span> ₽{selectedOrder.total_price}
-                    </div>
-                    <div>
-                      <span className="font-semibold">Статус:</span>{' '}
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(selectedOrder.status)}`}>
-                        {getStatusText(selectedOrder.status)}
-                      </span>
-                    </div>
+                <div className="bg-white rounded-lg p-8 max-w-6xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex justify-between items-start mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">Заказ #{selectedOrder.id}</h2>
+                    <button onClick={() => setSelectedOrder(null)} className="text-gray-400 hover:text-gray-600 text-3xl leading-none">
+                      &times;
+                    </button>
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Загрузить готовые фото:</h3>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-purple-400 transition-colors">
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                      />
-                      {selectedFiles && (
-                        <p className="mt-2 text-sm text-gray-600">
-                          Выбрано файлов: {selectedFiles.length}
-                        </p>
-                      )}
-                      <button
-                        onClick={uploadResultPhotos}
-                        disabled={!selectedFiles || uploadingPhotos}
-                        className="mt-4 w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-bold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {uploadingPhotos ? 'Загрузка...' : 'Загрузить фото'}
-                      </button>
+                  <div className="grid grid-cols-2 gap-8 mb-8">
+                    <div className="space-y-4">
+                      <div>
+                        <span className="font-semibold">Пользователь:</span> {selectedOrder.first_name} (@{selectedOrder.username})
+                      </div>
+                      <div>
+                        <span className="font-semibold">Telegram ID:</span> {selectedOrder.telegram_user_id}
+                      </div>
+                      <div>
+                        <span className="font-semibold">Цена:</span> ₽{selectedOrder.total_price}
+                      </div>
+                      <div>
+                        <span className="font-semibold">Статус:</span>{' '}
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(selectedOrder.status)}`}>
+                          {getStatusText(selectedOrder.status)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-semibold mb-3">
-                    Исходные фото ({selectedOrder.photos.length}):
-                  </h3>
-                  <div className="grid grid-cols-4 gap-4 mb-8">
-                    {selectedOrder.photos.map((photo, idx) => {
-                      const photoUrl = photo.startsWith('http') ? photo : `${API_URL}/uploads/orders/${photo}`;
-                      
-                      return (
-                        <img
-                          key={idx}
-                          src={photoUrl}
-                          alt={`Photo ${idx + 1}`}
-                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Загрузить готовые фото:</h3>
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-purple-400 transition-colors">
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={handleFileSelect}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
                         />
-                      );
-                    })}
+                        {selectedFiles && <p className="mt-2 text-sm text-gray-600">Выбрано файлов: {selectedFiles.length}</p>}
+                        <button
+                          onClick={uploadResultPhotos}
+                          disabled={!selectedFiles || uploadingPhotos}
+                          className="mt-4 w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-bold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {uploadingPhotos ? 'Загрузка...' : 'Загрузить фото'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
-                  <h3 className="text-lg font-semibold mb-3">
-                    Готовые фото ({selectedOrder.result_photos?.length || 0}):
-                  </h3>
-                  {selectedOrder.result_photos && selectedOrder.result_photos.length > 0 ? (
-                    <div className="grid grid-cols-4 gap-4 mb-6">
-                      {selectedOrder.result_photos.map((photo, idx) => {
-                        const photoUrl = photo.startsWith('http') ? photo : `${API_URL}/uploads/results/${photo}`;
-                        
+                  <div className="border-t pt-6">
+                    <h3 className="text-lg font-semibold mb-3">Исходные фото ({selectedOrder.photos.length}):</h3>
+                    <div className="grid grid-cols-4 gap-4 mb-8">
+                      {selectedOrder.photos.map((photo, idx) => {
+                        const photoUrl = photo.startsWith('http') ? photo : `${API_URL}/uploads/orders/${photo}`;
+
                         return (
-                          <div key={idx} className="relative group">
-                            <img
-                              src={photoUrl}
-                              alt={`Result ${idx + 1}`}
-                              className="w-full h-32 object-cover rounded-lg border-2 border-green-500"
-                            />
-                            <button
-                              onClick={() => deleteResultPhoto(photo)}
-                              className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                              title="Удалить"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
+                          <img
+                            key={idx}
+                            src={photoUrl}
+                            alt={`Photo ${idx + 1}`}
+                            className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors cursor-pointer"
+                          />
                         );
                       })}
                     </div>
-                  ) : (
-                    <p className="text-gray-500 mb-6">Готовых фото пока нет</p>
-                  )}
 
-                  <h3 className="text-lg font-semibold mb-3">Выбранные стили:</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    {styles.map((style: any, idx: number) => (
-                      <div key={idx} className="mb-2 flex justify-between items-center">
-                        <span className="font-medium">{style.name}</span>
-                        <span className="text-gray-600">₽{style.price}</span>
+                    <h3 className="text-lg font-semibold mb-3">Готовые фото ({selectedOrder.result_photos?.length || 0}):</h3>
+                    {selectedOrder.result_photos && selectedOrder.result_photos.length > 0 ? (
+                      <div className="grid grid-cols-4 gap-4 mb-6">
+                        {selectedOrder.result_photos.map((photo, idx) => {
+                          const photoUrl = photo.startsWith('http') ? photo : `${API_URL}/uploads/results/${photo}`;
+
+                          return (
+                            <div key={idx} className="relative group">
+                              <img src={photoUrl} alt={`Result ${idx + 1}`} className="w-full h-32 object-cover rounded-lg border-2 border-green-500" />
+                              <button
+                                onClick={() => deleteResultPhoto(photo)}
+                                className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                title="Удалить"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
+                    ) : (
+                      <p className="text-gray-500 mb-6">Готовых фото пока нет</p>
+                    )}
+
+                    <h3 className="text-lg font-semibold mb-3">Выбранные стили:</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      {styles.map((style: any, idx: number) => (
+                        <div key={idx} className="mb-2 flex justify-between items-center">
+                          <span className="font-medium">{style.name}</span>
+                          <span className="text-gray-600">₽{style.price}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })()}
+            );
+          })()}
       </div>
     </div>
   );

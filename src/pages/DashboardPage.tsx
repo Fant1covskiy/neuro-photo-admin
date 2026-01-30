@@ -38,9 +38,9 @@ export default function DashboardPage() {
   const loadStats = async () => {
     try {
       const [categoriesRes, stylesRes, ordersRes] = await Promise.all([
-        fetch(`${API_URL}/categories`),
-        fetch(`${API_URL}/styles`),
-        fetch(`${API_URL}/admin/orders`),
+        fetch(`${API_URL}/api/categories`),
+        fetch(`${API_URL}/api/styles`),
+        fetch(`${API_URL}/api/admin/orders`),
       ]);
 
       const categories = await categoriesRes.json();
@@ -48,10 +48,10 @@ export default function DashboardPage() {
       const orders = await ordersRes.json();
 
       setStats({
-        categories: categories.length,
-        styles: styles.length,
-        orders: orders.length,
-        users: 89, // Заглушка - пока нет эндпоинта users
+        categories: Array.isArray(categories) ? categories.length : 0,
+        styles: Array.isArray(styles) ? styles.length : 0,
+        orders: Array.isArray(orders) ? orders.length : 0,
+        users: 89,
       });
 
       setLoading(false);
@@ -63,9 +63,9 @@ export default function DashboardPage() {
 
   const loadRecentOrders = async () => {
     try {
-      const response = await fetch(`${API_URL}/admin/orders`);
+      const response = await fetch(`${API_URL}/api/admin/orders`);
       const orders = await response.json();
-      setRecentOrders(orders.slice(0, 5));
+      setRecentOrders(Array.isArray(orders) ? orders.slice(0, 5) : []);
     } catch (error) {
       console.error('Error loading recent orders:', error);
     }
@@ -106,7 +106,6 @@ export default function DashboardPage() {
           <p className="text-gray-600">Добро пожаловать в админ-панель НейроФото</p>
         </div>
 
-        {/* Статистика */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-2xl shadow-md p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center gap-4">
@@ -115,9 +114,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-gray-600 text-sm font-semibold">Категории</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {loading ? '...' : stats.categories}
-                </p>
+                <p className="text-3xl font-bold text-gray-800">{loading ? '...' : stats.categories}</p>
               </div>
             </div>
           </div>
@@ -129,9 +126,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-gray-600 text-sm font-semibold">Стили</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {loading ? '...' : stats.styles}
-                </p>
+                <p className="text-3xl font-bold text-gray-800">{loading ? '...' : stats.styles}</p>
               </div>
             </div>
           </div>
@@ -143,9 +138,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-gray-600 text-sm font-semibold">Заказы</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {loading ? '...' : stats.orders}
-                </p>
+                <p className="text-3xl font-bold text-gray-800">{loading ? '...' : stats.orders}</p>
               </div>
             </div>
           </div>
@@ -157,18 +150,15 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-gray-600 text-sm font-semibold">Пользователи</p>
-                <p className="text-3xl font-bold text-gray-800">
-                  {loading ? '...' : stats.users}
-                </p>
+                <p className="text-3xl font-bold text-gray-800">{loading ? '...' : stats.users}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Последние заказы */}
         <div className="bg-white rounded-2xl shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Последние заказы</h2>
-          
+
           {recentOrders.length > 0 ? (
             <div className="space-y-3">
               {recentOrders.map((order) => (
@@ -181,21 +171,13 @@ export default function DashboardPage() {
                       <span className="text-purple-600 font-bold">#{order.id}</span>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-800">
-                        {order.first_name || order.username || 'Пользователь'}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(order.created_at).toLocaleDateString('ru-RU')}
-                      </p>
+                      <p className="font-semibold text-gray-800">{order.first_name || order.username || 'Пользователь'}</p>
+                      <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString('ru-RU')}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <p className="font-bold text-purple-600">₽{order.total_price}</p>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                        order.status
-                      )}`}
-                    >
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
                       {getStatusText(order.status)}
                     </span>
                   </div>
@@ -203,9 +185,7 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-center text-gray-500 py-8">
-              Здесь будет список последних заказов...
-            </p>
+            <p className="text-center text-gray-500 py-8">Здесь будет список последних заказов...</p>
           )}
         </div>
       </div>
